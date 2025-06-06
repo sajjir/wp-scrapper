@@ -36,6 +36,9 @@ final class WC_Price_Scraper {
     }
 
     private function __construct() {
+        // Load plugin textdomain correctly on instantiation
+        load_plugin_textdomain('wc-price-scraper', false, dirname(plugin_basename(__FILE__)) . '/languages/');
+
         // تغییر مسیر لاگ به wp-content/debug.log برای اطمینان از دسترسی
         $this->debug_log_path = WP_CONTENT_DIR . '/debug.log';
         $this->includes();
