@@ -36,9 +36,6 @@ final class WC_Price_Scraper {
     }
 
     private function __construct() {
-        // Load plugin textdomain correctly on instantiation
-        load_plugin_textdomain('wc-price-scraper', false, dirname(plugin_basename(__FILE__)) . '/languages/');
-
         // تغییر مسیر لاگ به wp-content/debug.log برای اطمینان از دسترسی
         $this->debug_log_path = WP_CONTENT_DIR . '/debug.log';
         $this->includes();
@@ -141,18 +138,12 @@ final class WC_Price_Scraper {
     }
 }
 
-// Initialize the plugin
-function wc_price_scraper() {
-    return WC_Price_Scraper::instance();
+// Initialize the plugin and load textdomain in a standard way
+function wc_price_scraper_init() {
+    // Load plugin textdomain correctly on plugins_loaded
+    load_plugin_textdomain('wc-price-scraper', false, dirname(plugin_basename(__FILE__)) . '/languages/');
+    
+    // Return instance
+    WC_Price_Scraper::instance();
 }
-
-/**
- * Load the plugin's text domain for translation.
- */
-function wcps_load_textdomain() {
-    load_plugin_textdomain('wc-price-scraper', false, dirname(plugin_basename(WC_PRICE_SCRAPER_PATH . 'woocommerce-price-update.php')) . '/languages/');
-}
-add_action('init', 'wcps_load_textdomain', 5);
-
-// Initialize the plugin on plugins_loaded hook
-add_action('plugins_loaded', 'wc_price_scraper', 10);
+add_action('plugins_loaded', 'wc_price_scraper_init', 10);
