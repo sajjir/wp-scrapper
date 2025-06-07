@@ -273,6 +273,11 @@ class WCPS_Core {
             $attribute->set_visible($is_visible_for_user);
             $attribute->set_variation(true);
             
+            // کد دیباگ را اینجا اضافه کنید
+            $visibility_status = $is_visible_for_user ? 'Visible' : 'Hidden';
+            $this->plugin->debug_log("Attribute Check: '{$taxonomy_name}'. Should be {$visibility_status}.");
+            // پایان کد دیباگ
+
             $attributes_array_for_product[] = $attribute;
         }
 
