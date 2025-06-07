@@ -195,41 +195,60 @@ class WCPS_Core {
         }
         $this->plugin->debug_log("Smart variation sync complete for product #{$pid}.");
         // ===================================================================
-        // +++ START: Set Default Variation to the Lowest Price +++
+        // +++ START: Set Default Variation to the Lowest Price (FINAL) +++
         // ===================================================================
         if (!empty($scraped_data)) {
             $lowest_price_item = null;
             $min_price = PHP_INT_MAX;
 
-            // Step 1: Find the variation with the minimum price from scraped data
+            // Step 1: Find the variation with the minimum price
             foreach ($scraped_data as $item) {
-                if (isset($item['price']) && is_numeric($item['price']) && $item['price'] < $min_price) {
-                    $min_price = $item['price'];
-                    $lowest_price_item = $item;
+                if (isset($item['price'])) {
+                    $cleaned_price = (float) preg_replace('/[^0-9.]/', '', $item['price']);
+                    if ($cleaned_price > 0 && $cleaned_price < $min_price) {
+                        $min_price = $cleaned_price;
+                        $lowest_price_item = $item;
+                    }
                 }
             }
 
-            // Step 2: If we found a cheapest item, prepare its attributes for saving
+            // Step 2: If we found a cheapest item, prepare its attributes
             if ($lowest_price_item !== null) {
                 $default_attributes = [];
+                $non_attribute_keys = ['price', 'stock', 'url', 'image', 'seller'];
+
                 foreach ($lowest_price_item as $key => $value) {
-                    // We only care about actual product attributes
-                    if (strpos($key, 'pa_') === 0) {
-                        $term_name = is_array($value) ? ($value['label'] ?? $value['name']) : $value;
-                        // WooCommerce saves default attributes using slug, not name
-                        $default_attributes[$key] = sanitize_title($term_name);
+                    if (in_array(strtolower($key), $non_attribute_keys) || empty($value)) {
+                        continue;
                     }
+                    
+                    $taxonomy_key = $key;
+                    if (strpos($key, 'pa_') !== 0) {
+                        $taxonomy_key = 'pa_' . sanitize_title($key);
+                    }
+                    
+                    $term_name = is_array($value) ? ($value['label'] ?? $value['name']) : $value;
+
+                    // --- THE FINAL FIX IS HERE ---
+                    // Instead of generating a slug, we get the REAL slug from the database.
+                    $term = get_term_by('name', $term_name, $taxonomy_key);
+                    
+                    if ($term && !is_wp_error($term)) {
+                        // We found the term, so we use its actual, official slug
+                        $default_attributes[$taxonomy_key] = $term->slug;
+                    }
+                    // If term not found, we do nothing to avoid errors.
                 }
 
                 // Step 3: Save the array of default attributes to the parent product
                 if (!empty($default_attributes)) {
                     update_post_meta($pid, '_default_attributes', $default_attributes);
-                    $this->plugin->debug_log("Set default attributes for product #{$pid} to the cheapest variation.", $default_attributes);
+                    $this->plugin->debug_log("Set default attributes for product #{$pid} using REAL term slugs.", $default_attributes);
                 }
             }
         }
         // ===================================================================
-        // +++ END: Set Default Variation to the Lowest Price +++
+        // +++ END: Set Default Variation to the Lowest Price (FINAL) +++
         // ===================================================================
 
         wc_delete_product_transients($pid);
