@@ -140,10 +140,10 @@ final class WC_Price_Scraper {
 
 // Initialize the plugin and load textdomain in a standard way
 function wc_price_scraper_init() {
-    // Load plugin textdomain correctly on plugins_loaded
+    // Load plugin textdomain correctly on init
     load_plugin_textdomain('wc-price-scraper', false, dirname(plugin_basename(__FILE__)) . '/languages/');
     
     // Return instance
     WC_Price_Scraper::instance();
 }
-add_action('plugins_loaded', 'wc_price_scraper_init', 10);
+add_action('init', 'wc_price_scraper_init', 10);
