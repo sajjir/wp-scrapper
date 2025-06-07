@@ -99,6 +99,58 @@ if (!defined('ABSPATH')) exit;
                 </table>
             </div>
         </div>
+
+        <div class="postbox">
+            <h2 class="hndle"><span><?php esc_html_e('تنظیمات یکپارچه‌سازی با N8N', 'wc-price-scraper'); ?></span></h2>
+            <div class="inside">
+                <table class="form-table">
+                    <tr valign="top">
+                        <th scope="row"><?php esc_html_e('فعال‌سازی N8N', 'wc-price-scraper'); ?></th>
+                        <td>
+                            <label for="wc_price_scraper_n8n_enable">
+                                <input name="wc_price_scraper_n8n_enable" type="checkbox" id="wc_price_scraper_n8n_enable" value="yes" <?php checked('yes', get_option('wc_price_scraper_n8n_enable', 'no')); ?> />
+                                <?php esc_html_e('ارسال داده به N8N پس از همگام‌سازی موفق.', 'wc-price-scraper'); ?>
+                            </label>
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row"><label for="wc_price_scraper_n8n_webhook_url"><?php esc_html_e('URL وب‌هوک N8N', 'wc-price-scraper'); ?></label></th>
+                        <td>
+                            <input type="url" id="wc_price_scraper_n8n_webhook_url" name="wc_price_scraper_n8n_webhook_url" value="<?php echo esc_attr(get_option('wc_price_scraper_n8n_webhook_url', '')); ?>" class="large-text" placeholder="https://n8n.example.com/webhook/your-hook-id" />
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row"><label for="wc_price_scraper_n8n_model_slug"><?php esc_html_e('نامک ویژگی برای "مدل"', 'wc-price-scraper'); ?></label></th>
+                        <td>
+                            <input type="text" id="wc_price_scraper_n8n_model_slug" name="wc_price_scraper_n8n_model_slug" value="<?php echo esc_attr(get_option('wc_price_scraper_n8n_model_slug', '')); ?>" class="regular-text" placeholder="<?php esc_attr_e('مثال: model یا size', 'wc-price-scraper'); ?>" />
+                            <p class="description"><?php esc_html_e('نامک (slug) ویژگی که می‌خواهید به عنوان "مدل" در داده‌های ارسالی به N8N استفاده شود (بدون پیشوند pa_).', 'wc-price-scraper'); ?></p>
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row"><label for="wc_price_scraper_n8n_purchase_link_text"><?php esc_html_e('متن لینک خرید برای شیت', 'wc-price-scraper'); ?></label></th>
+                        <td>
+                            <input type="text" id="wc_price_scraper_n8n_purchase_link_text" name="wc_price_scraper_n8n_purchase_link_text" value="<?php echo esc_attr(get_option('wc_price_scraper_n8n_purchase_link_text', 'Buy Now')); ?>" class="regular-text" />
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="postbox">
+            <h2 class="hndle"><span><?php esc_html_e('عملیات اضطراری', 'wc-price-scraper'); ?></span></h2>
+            <div class="inside">
+                <table class="form-table">
+                    <tr valign="top">
+                        <th scope="row"><?php esc_html_e('توقف کامل', 'wc-price-scraper'); ?></th>
+                        <td>
+                            <button type="button" class="button button-danger" id="force_stop_button">توقف تمام عملیات و پاک‌سازی کامل صف</button>
+                            <p class="description"><?php esc_html_e('اگر احساس می‌کنید فرآیندی گیر کرده و متوقف نمی‌شود، از این دکمه استفاده کنید. این دکمه تمام کران‌جاب‌های این پلاگین (چه در حال اجرا و چه زمان‌بندی شده) را فوراً حذف می‌کند.', 'wc-price-scraper'); ?></p>
+                            <span id="stop_status" style="margin-left: 10px; font-weight: bold;"></span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
         
         <?php submit_button(); ?>
     </form>
