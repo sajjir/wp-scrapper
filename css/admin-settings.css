@@ -82,3 +82,143 @@
     background: #b62b2d !important;
     border-color: #9f2628 !important;
 }
+
+/*
+ * Styles for WC Price Scraper Settings Page
+ */
+
+:root {
+    --wcps-primary-blue: #2271b1;
+    --wcps-danger-red: #d63638;
+    --wcps-danger-red-hover: #b62b2d;
+    --wcps-border-color: #c3c4c7;
+    --wcps-light-gray: #f0f0f1;
+    --wcps-text-gray: #50575e;
+    --wcps-spacing-unit: 16px;
+}
+
+.wcps-settings-wrap .postbox {
+    margin-top: var(--wcps-spacing-unit);
+}
+
+.wcps-settings-wrap .hndle {
+    cursor: default;
+}
+
+/* Form Table General Styles */
+.wcps-settings-wrap .form-table {
+    margin-top: 0;
+}
+
+.wcps-settings-wrap .form-table th {
+    width: 200px;
+    padding-left: 0;
+}
+
+.wcps-settings-wrap .form-table p.description {
+    color: var(--wcps-text-gray);
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.wcps-settings-wrap .form-table strong {
+    color: var(--wcps-danger-red);
+}
+
+.wcps-settings-wrap .form-table input[type="text"],
+.wcps-settings-wrap .form-table input[type="url"],
+.wcps-settings-wrap .form-table textarea {
+    max-width: 500px;
+    width: 100%;
+}
+
+.wcps-settings-wrap .form-table textarea.code {
+    direction: ltr;
+    text-align: left;
+    font-family: monospace;
+}
+
+/* Repeater Field Styles */
+.wcps-repeater-table td {
+    vertical-align: middle;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.wcps-repeater-table label {
+    margin-right: 8px;
+}
+
+.wcps-repeater-table input.regular-text {
+    width: 25em; /* Standard WordPress width */
+}
+
+.wcps-repeater-table .wcps-repeater-action {
+    width: 30px;
+    text-align: left;
+    padding: 10px 0 !important;
+}
+
+.wcps-repeater-table .wcps-remove-rule {
+    color: var(--wcps-danger-red);
+    padding: 0 5px;
+}
+.wcps-repeater-table .wcps-remove-rule:hover {
+    background-color: var(--wcps-light-gray);
+}
+
+.wcps-repeater-table tfoot td {
+    padding-top: var(--wcps-spacing-unit);
+}
+
+#wcps-add-rule .dashicons {
+    vertical-align: text-top;
+    margin-left: 4px;
+}
+
+/* Cron Job Section Styles */
+.wcps-cron-status {
+    display: flex;
+    align-items: center;
+    gap: var(--wcps-spacing-unit);
+    flex-wrap: wrap;
+}
+
+.wcps-cron-status #cron_countdown {
+    font-size: 1.5em;
+    font-weight: 700;
+    color: var(--wcps-primary-blue);
+    background-color: var(--wcps-light-gray);
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--wcps-border-color);
+    margin-left: 8px;
+}
+
+.wcps-cron-status .wcps-cron-label {
+    font-weight: 600;
+}
+
+.wcps-cron-status .button .dashicons {
+    vertical-align: text-top;
+    margin-left: 4px;
+}
+
+.wcps-cron-status .spinner {
+    float: none;
+    margin: 0;
+}
+
+.wcps-status-text {
+    display: block;
+    margin-top: 8px;
+    font-weight: 600;
+}
+
+/* Footer */
+.wcps-footer {
+    margin-top: calc(2 * var(--wcps-spacing-unit));
+    padding-top: var(--wcps-spacing-unit);
+    border-top: 1px solid var(--wcps-border-color);
+    color: var(--wcps-text-gray);
+}
