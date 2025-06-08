@@ -257,7 +257,7 @@ class WCPS_Ajax_Cron {
      */
     public function run_high_frequency_scrape() {
         $this->plugin->debug_log('High-frequency cron job started.', 'HF_CRON_START');
-        
+
         $pids_raw = get_option('wcps_high_frequency_pids');
         if (empty($pids_raw)) {
             $this->plugin->debug_log('No high-frequency PIDs found. Exiting.', 'HF_CRON_INFO');
@@ -271,28 +271,30 @@ class WCPS_Ajax_Cron {
             if ($pid > 0) {
                 $source_url = get_post_meta($pid, '_source_url', true);
                 if ($source_url) {
-                    $this->plugin->debug_log("Processing HF product #{$pid}', 'HF_CRON_SCRAPE');
+                    $this->plugin->debug_log("Processing HF product #{$pid}", 'HF_CRON_SCRAPE');
+                    // The core scraping logic is called here
                     $this->core->process_single_product_scrape($pid, $source_url, false);
                     $processed_count++;
-                    sleep(1); // Small delay between requests
+                    sleep(1); // Small delay between requests to be gentle on the source server
                 }
             }
         }
-        $this->plugin->debug_log("High-frequency cron job finished. Processed {$processed_count} products.', 'HF_CRON_END');
+        $this->plugin->debug_log("High-frequency cron job finished. Processed {$processed_count} products.", 'HF_CRON_END');
     }
 
     /**
      * AJAX handler for the "Scrape High-Frequency Now" button.
      */
     public function ajax_force_high_frequency_scrape() {
+        // Verify the AJAX request for security
         if (!current_user_can('manage_options') || !check_ajax_referer('wcps_hf_scrape_nonce', 'security')) {
-            wp_send_json_error(['message' => 'درخواست نامعتبر.']);
+            wp_send_json_error(['message' => __('درخواست نامعتبر.', 'wc-price-scraper')]);
         }
-        
+
         // Run the scrape function directly as it's expected to be a small batch
         $this->run_high_frequency_scrape();
 
-        wp_send_json_success(['message' => 'درخواست اسکرپ فوری محصولات خاص با موفقیت انجام شد.']);
+        wp_send_json_success(['message' => __('درخواست اسکرپ فوری محصولات خاص با موفقیت انجام شد.', 'wc-price-scraper')]);
     }
 
     /**
