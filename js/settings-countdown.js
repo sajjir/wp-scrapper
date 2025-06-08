@@ -143,4 +143,43 @@ jQuery(document).ready(function($) {
         }
         wcps_reindex_rules();
     });
+
+    // --- High-Frequency Force Scrape Button ---
+    $('#force_scrape_high_frequency').on('click', function(e) {
+        e.preventDefault();
+        
+        var button = $(this);
+        var statusSpan = $('#hf_status');
+        var spinner = $('#hf_spinner');
+
+        button.prop('disabled', true);
+        spinner.addClass('is-active').css('display', 'inline-block');
+        statusSpan.text('در حال ارسال درخواست...').css('color', '');
+
+        $.ajax({
+            url: wc_scraper_settings_vars.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'wcps_force_hf_scrape',
+                security: wc_scraper_settings_vars.hf_scrape_nonce // We need to add this nonce
+            },
+            success: function(response) {
+                if(response.success) {
+                    statusSpan.text(response.data.message).css('color', 'green');
+                } else {
+                    statusSpan.text('خطا: ' + response.data.message).css('color', 'red');
+                }
+            },
+            error: function() {
+                statusSpan.text('خطای ایجکس.').css('color', 'red');
+            },
+            complete: function() {
+                setTimeout(function(){
+                    button.prop('disabled', false);
+                    spinner.removeClass('is-active').hide();
+                    statusSpan.text('');
+                }, 2000);
+            }
+        });
+    });
 });

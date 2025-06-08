@@ -53,6 +53,10 @@ class WCPS_Admin {
         register_setting($option_group, 'wcps_always_hide_keys', ['type' => 'string', 'sanitize_callback' => 'sanitize_textarea_field', 'default' => '']);
         register_setting($option_group, 'wcps_conditional_rules', ['type' => 'array', 'sanitize_callback' => [$this, 'sanitize_conditional_rules'], 'default' => []]);
 
+        // High-Frequency Settings
+        register_setting($option_group, 'wcps_high_frequency_pids', ['type' => 'string', 'sanitize_callback' => [$this, 'sanitize_pid_list']]);
+        register_setting($option_group, 'wcps_high_frequency_interval', ['type' => 'integer', 'sanitize_callback' => 'absint', 'default' => 30]);
+
         // N8N Integration Settings (if they exist)
         register_setting($option_group, 'wc_price_scraper_n8n_enable', ['type' => 'string', 'sanitize_callback' => [$this, 'sanitize_checkbox_yes_no'], 'default' => 'no']);
         register_setting($option_group, 'wc_price_scraper_n8n_webhook_url', ['type' => 'string', 'sanitize_callback' => 'esc_url_raw', 'default' => '']);
@@ -256,5 +260,110 @@ class WCPS_Admin {
             }
         }
         return $sanitized_rules;
+    }
+
+    /**
+     * Registers the dashboard widget.
+     * Hooks into 'wp_dashboard_setup'.
+     */
+    public function setup_dashboard_widget() {
+        if (current_user_can('manage_options')) {
+            wp_add_dashboard_widget(
+                'wcps_dashboard_widget',
+                __('وضعیت اسکرپر قیمت', 'wc-price-scraper'),
+                [$this, 'render_dashboard_widget']
+            );
+        }
+    }
+
+    /**
+     * Renders the content of the dashboard widget.
+     */
+    public function render_dashboard_widget() {
+        echo '<div class="wcps-widget-content">';
+
+        // 1. نمایش زمان اجرای بعدی کران جاب اصلی
+        $next_run_timestamp = wp_next_scheduled('wc_price_scraper_cron_event');
+        if ($next_run_timestamp) {
+            // محاسبه زمان باقی‌مانده به صورت خوانا
+            $remaining_time = human_time_diff($next_run_timestamp, current_time('timestamp')) . ' ' . __('دیگر', 'wc-price-scraper');
+            $display_time = sprintf('%s (%s)', date_i18n(get_option('date_format') . ' @ ' . get_option('time_format'), $next_run_timestamp), $remaining_time);
+            echo '<p><strong>' . esc_html__('کران جاب بعدی (عمومی):', 'wc-price-scraper') . '</strong><br>' . esc_html($display_time) . '</p>';
+        } else {
+            echo '<p><strong>' . esc_html__('کران جاب بعدی (عمومی):', 'wc-price-scraper') . '</strong><br>' . esc_html__('زمان‌بندی فعال نیست.', 'wc-price-scraper') . '</p>';
+        }
+
+        // 2. نمایش زمان آخرین اسکرپ موفق (با استفاده از لاگ)
+        $last_log_entry = $this->get_last_log_line('CRON_SUCCESS'); // فرض می‌کنیم لاگ‌ها چنین فرمتی دارند
+        if ($last_log_entry && isset($last_log_entry['timestamp'])) {
+             echo '<p><strong>' . esc_html__('آخرین اجرای موفق:', 'wc-price-scraper') . '</strong><br>' . esc_html(date_i18n(get_option('date_format') . ' @ ' . get_option('time_format'), $last_log_entry['timestamp'])) . '</p>';
+        } else {
+            // Fallback to old method if log is not available
+            $last_scraped_product = get_posts(['post_type' => 'product', 'posts_per_page' => 1, 'orderby' => 'meta_value_num', 'meta_key' => '_last_scraped_time', 'order' => 'DESC']);
+            if ($last_scraped_product) {
+                $last_scraped_time = get_post_meta($last_scraped_product[0]->ID, '_last_scraped_time', true);
+                 echo '<p><strong>' . esc_html__('آخرین اسکرپ موفق:', 'wc-price-scraper') . '</strong><br>' . esc_html(date_i18n(get_option('date_format') . ' @ ' . get_option('time_format'), $last_scraped_time)) . '</p>';
+            }
+        }
+        
+        echo '<p><a href="' . esc_url(admin_url('options-general.php?page=wc-price-scraper')) . '" class="button">' . esc_html__('رفتن به تنظیمات', 'wc-price-scraper') . '</a></p>';
+        echo '</div>';
+    }
+
+    /**
+     * Reads the last N lines from the log file.
+     *
+     * @param int $lines_count The number of lines to retrieve.
+     * @return array An array of log lines.
+     */
+    private function get_log_lines($lines_count = 63) {
+        $log_path = $this->plugin->get_log_path();
+        if (!file_exists($log_path)) {
+            return [__('فایل لاگ یافت نشد.', 'wc-price-scraper')];
+        }
+
+        $file_lines = file($log_path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if (empty($file_lines)) {
+            return [__('فایل لاگ خالی است.', 'wc-price-scraper')];
+        }
+
+        return array_slice($file_lines, -$lines_count);
+    }
+    
+    // این تابع برای ویجت داشبورد کاربرد دارد
+    public function get_last_log_line($type_filter) {
+        $log_path = $this->plugin->get_log_path();
+        if (!file_exists($log_path)) return null;
+
+        $lines = file($log_path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $lines = array_reverse($lines);
+
+        foreach ($lines as $line) {
+            if (strpos($line, "[$type_filter]") !== false) {
+                 preg_match('/\\[(.*?)\\]/', $line, $matches);
+                 return [
+                     'timestamp' => strtotime($matches[1]),
+                     'line' => $line
+                 ];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Sanitizes a list of product IDs from a textarea.
+     * @param string $input The raw input from the textarea.
+     * @return string The sanitized string of newline-separated IDs.
+     */
+    public function sanitize_pid_list($input) {
+        $lines = explode("\n", trim($input));
+        $sanitized_ids = [];
+        foreach ($lines as $line) {
+            $id = absint(trim($line));
+            if ($id > 0) {
+                $sanitized_ids[] = $id;
+            }
+        }
+        return implode("\n", array_unique($sanitized_ids));
     }
 }

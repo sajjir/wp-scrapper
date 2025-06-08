@@ -101,6 +101,40 @@ if (!defined('ABSPATH')) exit;
         </div>
 
         <div class="postbox">
+            <h2 class="hndle"><span><?php esc_html_e('به‌روزرسانی با فرکانس بالا (برای محصولات خاص)', 'wc-price-scraper'); ?></span></h2>
+            <div class="inside">
+                 <p class="description">
+                    <?php esc_html_e('شناسه محصولاتی که نیاز به به‌روزرسانی سریع‌تر دارند را در کادر زیر وارد کنید (هر شناسه در یک خط). سپس فاصله زمانی دلخواه خود را بر حسب دقیقه تنظیم کنید.', 'wc-price-scraper'); ?>
+                </p>
+                <table class="form-table">
+                    <tr valign="top">
+                        <th scope="row"><label for="wcps_high_frequency_pids"><?php esc_html_e('شناسه محصولات', 'wc-price-scraper'); ?></label></th>
+                        <td>
+                            <textarea id="wcps_high_frequency_pids" name="wcps_high_frequency_pids" rows="8" class="large-text" placeholder="<?php esc_attr_e("مثال:\n123\n456\n789", 'wc-price-scraper'); ?>"><?php echo esc_textarea(get_option('wcps_high_frequency_pids', '')); ?></textarea>
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row"><label for="wcps_high_frequency_interval"><?php esc_html_e('فاصله به‌روزرسانی (دقیقه)', 'wc-price-scraper'); ?></label></th>
+                        <td>
+                            <input type="number" id="wcps_high_frequency_interval" name="wcps_high_frequency_interval" value="<?php echo esc_attr(get_option('wcps_high_frequency_interval', 30)); ?>" min="1" class="small-text">
+                             <p class="description"><?php esc_html_e('این کران‌جاب به صورت مستقل از کران‌جاب عمومی اجرا خواهد شد.', 'wc-price-scraper'); ?></p>
+                        </td>
+                    </tr>
+                     <tr valign="top">
+                        <th scope="row"><?php esc_html_e('عملیات فوری', 'wc-price-scraper'); ?></th>
+                        <td>
+                            <button type="button" class="button button-secondary" id="force_scrape_high_frequency">
+                                <span class="dashicons dashicons-controls-play"></span> <?php esc_html_e('اسکرپ فوری این محصولات', 'wc-price-scraper'); ?>
+                            </button>
+                            <span class="spinner" id="hf_spinner"></span>
+                            <span id="hf_status" class="wcps-status-text"></span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="postbox">
             <h2 class="hndle"><span><?php esc_html_e('تنظیمات یکپارچه‌سازی با N8N', 'wc-price-scraper'); ?></span></h2>
             <div class="inside">
                 <table class="form-table">
@@ -149,6 +183,36 @@ if (!defined('ABSPATH')) exit;
                         </td>
                     </tr>
                 </table>
+            </div>
+        </div>
+        
+        <div class="postbox">
+            <h2 class="hndle"><span><?php esc_html_e('گزارش آخرین فعالیت‌ها (۶۳ خط آخر)', 'wc-price-scraper'); ?></span></h2>
+            <div class="inside">
+                <div id="wcps-log-viewer">
+                    <pre><?php
+                        // We need an instance of the admin class to call the method.
+                        // This is a simplified way for a view file.
+                        $admin_class_instance = WC_Price_Scraper::instance()->admin;
+                        $log_lines = $admin_class_instance->get_log_lines(63);
+                        foreach (array_reverse($log_lines) as $line) {
+                            echo esc_html($line) . "\n";
+                        }
+                    ?></pre>
+                </div>
+                <style>
+                    #wcps-log-viewer pre {
+                        background-color: #f7f7f7;
+                        border: 1px solid #ccc;
+                        padding: 15px;
+                        max-height: 400px;
+                        overflow-y: scroll;
+                        white-space: pre-wrap;
+                        word-wrap: break-word;
+                        direction: ltr;
+                        text-align: left;
+                    }
+                </style>
             </div>
         </div>
         
