@@ -68,6 +68,7 @@ final class WC_Price_Scraper {
         add_action('admin_menu', [$this->admin, 'add_settings_page']);
         add_action('admin_init', [$this->admin, 'register_settings']);
         add_action('admin_enqueue_scripts', [$this->admin, 'enqueue_admin_scripts']);
+        add_action('wp_dashboard_setup', [$this->admin, 'setup_dashboard_widget']);
         add_action('woocommerce_product_options_general_product_data', [$this->admin, 'add_scraper_fields']);
         add_action('woocommerce_process_product_meta', [$this->admin, 'save_scraper_fields'], 10, 2);
         add_action('woocommerce_variation_options_pricing', [$this->admin, 'add_protected_variation_checkbox'], 20, 3);
@@ -83,24 +84,53 @@ final class WC_Price_Scraper {
         register_activation_hook(__FILE__, [$this->ajax_cron, 'activate']);
         register_deactivation_hook(__FILE__, [$this->ajax_cron, 'deactivate']);
         add_action('update_option_wc_price_scraper_cron_interval', [$this->ajax_cron, 'handle_settings_save'], 10, 3);
+        add_action('update_option_wcps_high_frequency_pids', [$this->ajax_cron, 'handle_settings_save'], 10, 3);
+        add_action('update_option_wcps_high_frequency_interval', [$this->ajax_cron, 'handle_settings_save'], 10, 3);
         add_action('wp_ajax_wcps_force_reschedule', [$this->ajax_cron, 'ajax_force_reschedule_callback']);
         add_action('wp_ajax_wcps_force_stop', [$this->ajax_cron, 'ajax_force_stop_all_crons']);
         add_action('wp_ajax_wcps_run_scrape_task', [$this->ajax_cron, 'run_scrape_task_handler']);
         add_action('wp_ajax_nopriv_wcps_run_scrape_task', [$this->ajax_cron, 'run_scrape_task_handler']);
         add_action('wcps_force_run_all_event', [$this->ajax_cron, 'cron_update_all_prices']);
+
+        // High-Frequency Hooks
+        add_action('wcps_high_frequency_cron_event', [$this->ajax_cron, 'run_high_frequency_scrape']);
+        add_action('wp_ajax_wcps_force_hf_scrape', [$this->ajax_cron, 'ajax_force_high_frequency_scrape']);
     }
 
     // --- Utility Functions ---
-    public function debug_log($msg, $data_to_print = null) {
-        if (WC_PRICE_SCRAPER_DEBUG || (defined('WP_DEBUG') && WP_DEBUG)) {
-            $timestamp = current_time('mysql');
-            $log_entry = "[{$timestamp}] {$msg}";
-            if ($data_to_print !== null) {
-                $log_entry .= "\n" . print_r($data_to_print, true);
-            }
-            $log_entry .= "\n";
-            file_put_contents($this->debug_log_path, $log_entry, FILE_APPEND);
+    /**
+     * Gets the path for the log file.
+     *
+     * @return string The full path to the log file.
+     */
+    public function get_log_path() {
+        $upload_dir = wp_upload_dir();
+        return $upload_dir['basedir'] . '/wc-price-scraper.log';
+    }
+
+    /**
+     * Logs messages to a dedicated file with structured data.
+     *
+     * @param string $message The log message.
+     * @param string $type The type of log entry (e.g., INFO, ERROR, CRON_START).
+     * @param array|null $data Optional data to include in the log.
+     */
+    public function debug_log($message, $type = 'INFO', $data = null) {
+        if (!WC_PRICE_SCRAPER_DEBUG && $type === 'INFO') {
+            return;
         }
+        
+        $log_path = $this->get_log_path();
+        $timestamp = current_time('timestamp');
+        $datetime = date_i18n('Y-m-d H:i:s', $timestamp);
+        
+        $log_entry = "[$datetime] [$type] - $message";
+        if ($data !== null) {
+            $log_entry .= " - Data: " . wp_json_encode($data, JSON_UNESCAPED_UNICODE);
+        }
+        $log_entry .= "\n";
+        
+        file_put_contents($log_path, $log_entry, FILE_APPEND);
     }
 
     public function make_api_call($url, $attempts = 3) {
@@ -140,10 +170,10 @@ final class WC_Price_Scraper {
 
 // Initialize the plugin and load textdomain in a standard way
 function wc_price_scraper_init() {
-    // Load plugin textdomain correctly on plugins_loaded
+    // Load plugin textdomain correctly on init
     load_plugin_textdomain('wc-price-scraper', false, dirname(plugin_basename(__FILE__)) . '/languages/');
     
     // Return instance
     WC_Price_Scraper::instance();
 }
-add_action('plugins_loaded', 'wc_price_scraper_init', 10);
+add_action('init', 'wc_price_scraper_init', 10);

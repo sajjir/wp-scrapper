@@ -35,17 +35,22 @@ class WCPS_Ajax_Cron {
      * It schedules the RECURRING event to start IN THE FUTURE.
      */
     public function handle_settings_save() {
-        $this->deactivate(); // Clear any old schedules first
-
+        // General cron
+        wp_clear_scheduled_hook('wc_price_scraper_cron_event');
         $interval_hours = (int) get_option('wc_price_scraper_cron_interval', 12);
-        if ($interval_hours <= 0) {
-            $this->plugin->debug_log('Cron interval is zero or less. No new schedule was set.');
-            return;
+        if ($interval_hours > 0) {
+            wp_schedule_event(time() + ($interval_hours * 3600), $this->schedule_name, 'wc_price_scraper_cron_event');
+            $this->plugin->debug_log('Recurring general schedule was set.', 'CRON_SETUP');
         }
 
-        $future_timestamp = time() + ($interval_hours * 3600);
-        wp_schedule_event($future_timestamp, $this->schedule_name, 'wc_price_scraper_cron_event');
-        $this->plugin->debug_log('Recurring schedule was set via settings page. Next run at: ' . date_i18n('Y-m-d H:i:s', $future_timestamp));
+        // High-frequency cron
+        wp_clear_scheduled_hook('wcps_high_frequency_cron_event');
+        $hf_pids = get_option('wcps_high_frequency_pids');
+        $hf_interval = (int) get_option('wcps_high_frequency_interval', 30);
+        if (!empty($hf_pids) && $hf_interval > 0) {
+            wp_schedule_event(time() + ($hf_interval * 60), 'wcps_high_frequency', 'wcps_high_frequency_cron_event');
+            $this->plugin->debug_log('Recurring high-frequency schedule was set.', 'CRON_SETUP');
+        }
     }
 
     /**
@@ -155,11 +160,20 @@ class WCPS_Ajax_Cron {
 
     // --- Other Functions ---
     public function add_cron_interval($schedules) {
+        // General cron
         $interval_hours = get_option('wc_price_scraper_cron_interval', 12);
         if ($interval_hours > 0) {
             $schedules[$this->schedule_name] = [
                 'interval' => intval($interval_hours) * 3600,
-                'display'  => sprintf(__('هر %d ساعت (اسکرپر)', 'wc-price-scraper'), $interval_hours)
+                'display'  => sprintf(__('هر %d ساعت (اسکرپر عمومی)', 'wc-price-scraper'), $interval_hours)
+            ];
+        }
+        // High-frequency cron
+        $hf_interval_minutes = get_option('wcps_high_frequency_interval', 30);
+         if ($hf_interval_minutes > 0) {
+            $schedules['wcps_high_frequency'] = [
+                'interval' => intval($hf_interval_minutes) * 60,
+                'display'  => sprintf(__('هر %d دقیقه (اسکرپر خاص)', 'wc-price-scraper'), $hf_interval_minutes)
             ];
         }
         return $schedules;
@@ -236,6 +250,51 @@ class WCPS_Ajax_Cron {
         $this->deactivate();
 
         wp_send_json_success(['message' => 'تمام عملیات و زمان‌بندی‌ها با موفقیت پاک‌سازی شدند.']);
+    }
+
+    /**
+     * The main cron job function that scrapes high-frequency products.
+     */
+    public function run_high_frequency_scrape() {
+        $this->plugin->debug_log('High-frequency cron job started.', 'HF_CRON_START');
+
+        $pids_raw = get_option('wcps_high_frequency_pids');
+        if (empty($pids_raw)) {
+            $this->plugin->debug_log('No high-frequency PIDs found. Exiting.', 'HF_CRON_INFO');
+            return;
+        }
+
+        $pids = array_map('absint', explode("\n", trim($pids_raw)));
+        $processed_count = 0;
+
+        foreach ($pids as $pid) {
+            if ($pid > 0) {
+                $source_url = get_post_meta($pid, '_source_url', true);
+                if ($source_url) {
+                    $this->plugin->debug_log("Processing HF product #{$pid}", 'HF_CRON_SCRAPE');
+                    // The core scraping logic is called here
+                    $this->core->process_single_product_scrape($pid, $source_url, false);
+                    $processed_count++;
+                    sleep(1); // Small delay between requests to be gentle on the source server
+                }
+            }
+        }
+        $this->plugin->debug_log("High-frequency cron job finished. Processed {$processed_count} products.", 'HF_CRON_END');
+    }
+
+    /**
+     * AJAX handler for the "Scrape High-Frequency Now" button.
+     */
+    public function ajax_force_high_frequency_scrape() {
+        // Verify the AJAX request for security
+        if (!current_user_can('manage_options') || !check_ajax_referer('wcps_hf_scrape_nonce', 'security')) {
+            wp_send_json_error(['message' => __('درخواست نامعتبر.', 'wc-price-scraper')]);
+        }
+
+        // Run the scrape function directly as it's expected to be a small batch
+        $this->run_high_frequency_scrape();
+
+        wp_send_json_success(['message' => __('درخواست اسکرپ فوری محصولات خاص با موفقیت انجام شد.', 'wc-price-scraper')]);
     }
 
     /**

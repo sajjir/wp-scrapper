@@ -110,92 +110,149 @@ class WCPS_Core {
     }
 
     public function sync_product_variations($pid, $scraped_data) {
-    $this->plugin->debug_log("Starting smart variation sync for product #{$pid}");
-    $parent_product = wc_get_product($pid);
-    if (!$parent_product || !$parent_product->is_type('variable')) {
-        $this->plugin->debug_log("Parent product #{$pid} not found or not variable for sync.");
-        return;
-    }
+        $this->plugin->debug_log("Starting smart variation sync for product #{$pid}");
+        $parent_product = wc_get_product($pid);
+        if (!$parent_product || !$parent_product->is_type('variable')) {
+            $this->plugin->debug_log("Parent product #{$pid} not found or not variable for sync.");
+            return;
+        }
 
-    $this->prepare_parent_attributes_stable($pid, $scraped_data);
+        $this->prepare_parent_attributes_stable($pid, $scraped_data);
 
-    $existing_variation_ids = $parent_product->get_children();
-    $unprotected_variations_map = [];
-    foreach ($existing_variation_ids as $var_id) {
-        if (get_post_meta($var_id, '_wcps_is_protected', true) === 'yes') continue;
-        $variation = wc_get_product($var_id);
-        if (!$variation) continue;
-        $attributes = $variation->get_attributes();
-        ksort($attributes);
-        $unprotected_variations_map[md5(json_encode($attributes))] = $var_id;
-    }
+        $existing_variation_ids = $parent_product->get_children();
+        $unprotected_variations_map = [];
+        foreach ($existing_variation_ids as $var_id) {
+            if (get_post_meta($var_id, '_wcps_is_protected', true) === 'yes') continue;
+            $variation = wc_get_product($var_id);
+            if (!$variation) continue;
+            $attributes = $variation->get_attributes();
+            ksort($attributes);
+            $unprotected_variations_map[md5(json_encode($attributes))] = $var_id;
+        }
 
-    $created_or_updated = [];
-    foreach ($scraped_data as $item) {
-        $attr_data = [];
-        
-        // ---- این بخش اصلاح شده، اسلاگ صحیح را از دیتابیس می‌خواند ----
-        foreach ($item as $k => $v) {
-            if (in_array(strtolower($k), ['price', 'stock', 'url', 'image', 'seller']) || $v === '' || $v === null) continue;
+        $created_or_updated = [];
+        foreach ($scraped_data as $item) {
+            $attr_data = [];
             
-            $clean_key = sanitize_title(urldecode(str_replace(['attribute_pa_', 'pa_'], '', $k)));
-            $taxonomy = 'pa_' . $clean_key;
-            $term_name = is_array($v) ? ($v['label'] ?? $v['name']) : $v;
+            // ---- این بخش اصلاح شده، اسلاگ صحیح را از دیتابیس می‌خواند ----
+            foreach ($item as $k => $v) {
+                if (in_array(strtolower($k), ['price', 'stock', 'url', 'image', 'seller']) || $v === '' || $v === null) continue;
+                
+                $clean_key = sanitize_title(urldecode(str_replace(['attribute_pa_', 'pa_'], '', $k)));
+                $taxonomy = 'pa_' . $clean_key;
+                $term_name = is_array($v) ? ($v['label'] ?? $v['name']) : $v;
 
-            if (empty($term_name)) continue;
+                if (empty($term_name)) continue;
 
-            // پیدا کردن ترم بر اساس نام برای گرفتن اسلاگ صحیح
-            $term = get_term_by('name', $term_name, $taxonomy);
+                // پیدا کردن ترم بر اساس نام برای گرفتن اسلاگ صحیح
+                $term = get_term_by('name', $term_name, $taxonomy);
 
-            if ($term && !is_wp_error($term)) {
-                $attr_data[$taxonomy] = $term->slug; // استفاده از اسلاگ صحیح
-            } else {
-                $attr_data[$taxonomy] = sanitize_title($term_name);
-                $this->plugin->debug_log("Warning: Term '{$term_name}' not found for taxonomy '{$taxonomy}'. Used a generated slug as fallback.");
+                if ($term && !is_wp_error($term)) {
+                    $attr_data[$taxonomy] = $term->slug; // استفاده از اسلاگ صحیح
+                } else {
+                    $attr_data[$taxonomy] = sanitize_title($term_name);
+                    $this->plugin->debug_log("Warning: Term '{$term_name}' not found for taxonomy '{$taxonomy}'. Used a generated slug as fallback.");
+                }
+            }
+            
+            if (empty($attr_data)) continue;
+
+            ksort($attr_data);
+            $variation_hash = md5(json_encode($attr_data));
+            $var_id = $unprotected_variations_map[$variation_hash] ?? null;
+
+            $variation = ($var_id) ? wc_get_product($var_id) : new WC_Product_Variation();
+            if (!$var_id) {
+                $variation->set_parent_id($pid);
+            }
+            
+            $variation->set_attributes($attr_data);
+            
+            if (isset($item['price']) && is_numeric(preg_replace('/[^0-9.]/', '', $item['price']))) {
+                $price = preg_replace('/[^0-9.]/', '', $item['price']);
+                $variation->set_price($price);
+                $variation->set_regular_price($price);
+            }
+            if (isset($item['stock'])) {
+                $stock_status = (strpos($item['stock'], 'موجود') !== false || strpos($item['stock'], 'in_stock') !== false) ? 'instock' : 'outofstock';
+                $variation->set_stock_status($stock_status);
+            }
+            
+            $variation_id = $variation->save();
+
+            if (empty($variation->get_sku())) {
+                $variation->set_sku((string)$variation_id);
+                $variation->save();
+            }
+
+            $created_or_updated[] = $variation_id;
+        }
+
+        $variations_to_delete = array_diff(array_values($unprotected_variations_map), $created_or_updated);
+        foreach ($variations_to_delete as $var_id_to_delete) {
+            wp_delete_post($var_id_to_delete, true);
+            $this->plugin->debug_log("Deleted obsolete variation #{$var_id_to_delete}.");
+        }
+        $this->plugin->debug_log("Smart variation sync complete for product #{$pid}.");
+        // ===================================================================
+        // +++ START: Set Default Variation to the Lowest Price (FINAL) +++
+        // ===================================================================
+        if (!empty($scraped_data)) {
+            $lowest_price_item = null;
+            $min_price = PHP_INT_MAX;
+
+            // Step 1: Find the variation with the minimum price
+            foreach ($scraped_data as $item) {
+                if (isset($item['price'])) {
+                    $cleaned_price = (float) preg_replace('/[^0-9.]/', '', $item['price']);
+                    if ($cleaned_price > 0 && $cleaned_price < $min_price) {
+                        $min_price = $cleaned_price;
+                        $lowest_price_item = $item;
+                    }
+                }
+            }
+
+            // Step 2: If we found a cheapest item, prepare its attributes
+            if ($lowest_price_item !== null) {
+                $default_attributes = [];
+                $non_attribute_keys = ['price', 'stock', 'url', 'image', 'seller'];
+
+                foreach ($lowest_price_item as $key => $value) {
+                    if (in_array(strtolower($key), $non_attribute_keys) || empty($value)) {
+                        continue;
+                    }
+                    
+                    $taxonomy_key = $key;
+                    if (strpos($key, 'pa_') !== 0) {
+                        $taxonomy_key = 'pa_' . sanitize_title($key);
+                    }
+                    
+                    $term_name = is_array($value) ? ($value['label'] ?? $value['name']) : $value;
+
+                    // --- THE FINAL FIX IS HERE ---
+                    // Instead of generating a slug, we get the REAL slug from the database.
+                    $term = get_term_by('name', $term_name, $taxonomy_key);
+                    
+                    if ($term && !is_wp_error($term)) {
+                        // We found the term, so we use its actual, official slug
+                        $default_attributes[$taxonomy_key] = $term->slug;
+                    }
+                    // If term not found, we do nothing to avoid errors.
+                }
+
+                // Step 3: Save the array of default attributes to the parent product
+                if (!empty($default_attributes)) {
+                    update_post_meta($pid, '_default_attributes', $default_attributes);
+                    $this->plugin->debug_log("Set default attributes for product #{$pid} using REAL term slugs.", $default_attributes);
+                }
             }
         }
-        
-        if (empty($attr_data)) continue;
+        // ===================================================================
+        // +++ END: Set Default Variation to the Lowest Price (FINAL) +++
+        // ===================================================================
 
-        ksort($attr_data);
-        $variation_hash = md5(json_encode($attr_data));
-        $var_id = $unprotected_variations_map[$variation_hash] ?? null;
-
-        $variation = ($var_id) ? wc_get_product($var_id) : new WC_Product_Variation();
-        if (!$var_id) {
-            $variation->set_parent_id($pid);
-        }
-        
-        $variation->set_attributes($attr_data);
-        
-        if (isset($item['price']) && is_numeric(preg_replace('/[^0-9.]/', '', $item['price']))) {
-            $price = preg_replace('/[^0-9.]/', '', $item['price']);
-            $variation->set_price($price);
-            $variation->set_regular_price($price);
-        }
-        if (isset($item['stock'])) {
-            $stock_status = (strpos($item['stock'], 'موجود') !== false || strpos($item['stock'], 'in_stock') !== false) ? 'instock' : 'outofstock';
-            $variation->set_stock_status($stock_status);
-        }
-        
-        $variation_id = $variation->save();
-
-        if (empty($variation->get_sku())) {
-            $variation->set_sku((string)$variation_id);
-            $variation->save();
-        }
-
-        $created_or_updated[] = $variation_id;
+        wc_delete_product_transients($pid);
     }
-
-    $variations_to_delete = array_diff(array_values($unprotected_variations_map), $created_or_updated);
-    foreach ($variations_to_delete as $var_id_to_delete) {
-        wp_delete_post($var_id_to_delete, true);
-        $this->plugin->debug_log("Deleted obsolete variation #{$var_id_to_delete}.");
-    }
-    $this->plugin->debug_log("Smart variation sync complete for product #{$pid}.");
-    wc_delete_product_transients($pid);
-}
 
     /**
      * ++++++++++ تابع حل کننده مشکل اصلی (نسخه اصلاح شده) ++++++++++
@@ -273,6 +330,11 @@ class WCPS_Core {
             $attribute->set_visible($is_visible_for_user);
             $attribute->set_variation(true);
             
+            // کد دیباگ را اینجا اضافه کنید
+            $visibility_status = $is_visible_for_user ? 'Visible' : 'Hidden';
+            $this->plugin->debug_log("Attribute Check: '{$taxonomy_name}'. Should be {$visibility_status}.");
+            // پایان کد دیباگ
+
             $attributes_array_for_product[] = $attribute;
         }
 
