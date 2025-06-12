@@ -94,69 +94,100 @@ if (!class_exists('WCPS_Ajax_Cron')) {
         }
 
         /**
-         * The main cron job function that scrapes all products.
+         * NEW LOGIC: This function now acts as a dispatcher.
+         * It finds all eligible products and schedules a separate, single cron event for each one.
+         * This prevents a single failed product from stopping the entire process.
          */
         public function cron_update_all_prices() {
-            $this->plugin->debug_log('Cron job started.');
+            $this->plugin->debug_log('General Cron Dispatcher Started: Finding and queueing products.', 'CRON_DISPATCH');
+
             $args = [
                 'post_type'      => 'product',
                 'posts_per_page' => -1,
                 'post_status'    => 'publish',
+                'fields'         => 'ids', // We only need the IDs
                 'meta_query'     => [
                     'relation' => 'AND',
-                    ['key' => '_source_url', 'compare' => 'EXISTS'],
                     ['key' => '_source_url', 'value' => '', 'compare' => '!='],
                     ['key' => '_auto_sync_variations', 'value' => 'yes']
                 ]
             ];
             
-            $all_products = get_posts($args);
-            $priority_cats = (array) get_option('wc_price_scraper_priority_cats', []);
-            
-            $priority_products = [];
-            $other_products = [];
+            $product_ids = get_posts($args);
 
-            if (!empty($priority_cats)) {
-                foreach ($all_products as $product) {
-                    $product_cats = wp_get_post_terms($product->ID, 'product_cat', ['fields' => 'ids']);
-                    if (!empty(array_intersect($priority_cats, $product_cats))) {
-                        $priority_products[] = $product;
-                    } else {
-                        $other_products[] = $product;
-                    }
-                }
-                $sorted_products = array_merge($priority_products, $other_products);
-            } else {
-                $sorted_products = $all_products;
+            if (empty($product_ids)) {
+                $this->plugin->debug_log('No products found for general cron processing.', 'CRON_DISPATCH');
+                return;
+            }
+
+            $stagger_time_seconds = 45; // 45 ثانیه فاصله بین هر وظیفه
+            $count = 0;
+
+            foreach ($product_ids as $pid) {
+                // Schedule a single, non-recurring event for each product.
+                wp_schedule_single_event(time() + ($count * $stagger_time_seconds), 'wcps_scrape_single_product_task', ['product_id' => $pid]);
+                $count++;
+            }
+
+            $this->plugin->debug_log("Successfully queued {$count} products for individual scraping.", 'CRON_DISPATCH');
+        }
+
+        /**
+         * NEW FUNCTION: This handler processes a single product scrape task.
+         * It's triggered by the wp_schedule_single_event from the dispatcher.
+         */
+        public function scrape_single_product_handler($product_id) {
+            if (empty($product_id)) {
+                return;
             }
             
-            foreach ($sorted_products as $product) {
-                $pid = $product->ID;
-                $source_url = get_post_meta($pid, '_source_url', true);
+            $this->plugin->debug_log("Starting single-product task for PID: {$product_id}", 'SINGLE_TASK_START');
+            $source_url = get_post_meta($product_id, '_source_url', true);
+
+            if (empty($source_url)) {
+                $this->plugin->debug_log("No source URL for PID: {$product_id}. Skipping.", 'SINGLE_TASK_SKIP');
+                return;
+            }
+
+            // Call the core scraping function
+            $result = $this->core->process_single_product_scrape($product_id, $source_url, false);
+
+            // Check for errors and log them for the new UI
+            if (is_wp_error($result)) {
+                $error_message = $result->get_error_message();
+                $this->plugin->debug_log("Scrape FAILED for PID: {$product_id}. Error: {$error_message}", 'ERROR');
                 
-                if ($source_url) {
-                    $result = $this->core->process_single_product_scrape($pid, $source_url, false);
-
-                    // ==========================================================
-                    // ++ شروع بخش اضافه‌شده برای ارسال به N8N ++
-                    // ==========================================================
-                    if (!is_wp_error($result)) {
-                        update_post_meta($pid, '_last_scraped_time', current_time('timestamp'));
-                        
-                        // N8N Integration Trigger
-                        if (isset($this->plugin->n8n_integration) && $this->plugin->n8n_integration->is_enabled()) {
-                            $this->plugin->debug_log("Cron: Scrape successful for product #{$pid}. Triggering N8N send.");
-                            $this->plugin->n8n_integration->trigger_send_for_product($pid);
-                        }
-                    }
-                    // ==========================================================
-                    // -- پایان بخش اضافه‌شده --
-                    // ==========================================================
-
-                    sleep(1); 
+                // Log the failure for the admin settings page
+                $this->log_failed_scrape($product_id, $error_message);
+            } else {
+                // Here you can add logic for successful N8N send if needed
+                update_post_meta($product_id, '_last_scraped_time', current_time('timestamp'));
+                if (isset($this->plugin->n8n_integration) && $this->plugin->n8n_integration->is_enabled()) {
+                     $this->plugin->n8n_integration->trigger_send_for_product($product_id);
                 }
             }
-            $this->plugin->debug_log('Cron job finished.');
+        }
+
+        /**
+         * NEW UTILITY FUNCTION: Logs failed product scrapes to a WP option.
+         */
+        private function log_failed_scrape($product_id, $error_message) {
+            $failures = get_option('wcps_failed_scrapes', []);
+            
+            // Store product ID, error message, and timestamp.
+            // Use product ID as key to prevent duplicates in the list.
+            $failures[$product_id] = [
+                'product_title' => get_the_title($product_id),
+                'error_message' => $error_message,
+                'timestamp'     => current_time('timestamp')
+            ];
+            
+            // Keep only the last 20 failures to prevent the option from getting too large.
+            if(count($failures) > 20) {
+               $failures = array_slice($failures, -20, 20, true);
+            }
+
+            update_option('wcps_failed_scrapes', $failures);
         }
 
         // --- Other Functions ---

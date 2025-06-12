@@ -96,6 +96,8 @@ if (!class_exists('WC_Price_Scraper')) {
             // High-Frequency Hooks
             add_action('wcps_high_frequency_cron_event', [$this->ajax_cron, 'run_high_frequency_scrape']);
             add_action('wp_ajax_wcps_force_hf_scrape', [$this->ajax_cron, 'ajax_force_high_frequency_scrape']);
+
+            add_action('wcps_scrape_single_product_task', [$this->ajax_cron, 'scrape_single_product_handler'], 10, 1);
         }
 
         // --- Utility Functions ---

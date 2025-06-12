@@ -1,5 +1,13 @@
 <?php
 if (!defined('ABSPATH')) exit;
+
+// Add this PHP block at the top of the file to handle the form submission for clearing the log
+if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log') {
+    if (isset($_POST['_wpnonce']) && wp_verify_nonce($_POST['_wpnonce'], 'wcps_clear_failed_log_nonce')) {
+        delete_option('wcps_failed_scrapes');
+        echo '<div class="updated"><p>' . esc_html__('لیست خطاهای اسکرپ با موفقیت پاک شد.', 'wc-price-scraper') . '</p></div>';
+    }
+}
 ?>
 <div class="wrap wcps-settings-wrap">
     <h1><?php esc_html_e('تنظیمات اسکرپر قیمت ووکامرس', 'wc-price-scraper'); ?></h1>
@@ -213,6 +221,41 @@ if (!defined('ABSPATH')) exit;
                         text-align: left;
                     }
                 </style>
+            </div>
+        </div>
+        
+        <div class="postbox">
+            <h2 class="hndle"><span><?php esc_html_e('گزارش محصولات ناموفق در اسکرپ', 'wc-price-scraper'); ?></span></h2>
+            <div class="inside">
+                <p class="description">
+                    <?php esc_html_e('در این بخش، محصولاتی که در آخرین تلاش‌ها برای اسکرپ با خطا مواجه شده‌اند لیست می‌شوند. با کلیک روی هر مورد می‌توانید به صفحه ویرایش آن محصول بروید و مشکل را بررسی کنید (مثلاً اصلاح URL منبع).', 'wc-price-scraper'); ?>
+                </p>
+                
+                <?php
+                $failed_scrapes = get_option('wcps_failed_scrapes', []);
+                if (!empty($failed_scrapes)) :
+                ?>
+                    <ul class="ul-disc" style="margin-right: 20px;">
+                        <?php foreach (array_reverse($failed_scrapes, true) as $product_id => $data) : ?>
+                            <li>
+                                <strong><a href="<?php echo esc_url(get_edit_post_link($product_id)); ?>" target="_blank"><?php echo esc_html($data['product_title'] ?? "محصول با شناسه {$product_id}"); ?></a></strong>
+                                <p style="margin-top: 0; margin-bottom: 10px;">
+                                    <small>
+                                        <?php echo esc_html(date_i18n('Y/m/d H:i:s', $data['timestamp'])); ?> - 
+                                        <em><?php esc_html_e('خطا:', 'wc-price-scraper'); ?> <?php echo esc_html($data['error_message']); ?></em>
+                                    </small>
+                                </p>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <form method="post" action="">
+                        <?php wp_nonce_field('wcps_clear_failed_log_nonce'); ?>
+                        <input type="hidden" name="wcps_action" value="clear_failed_log" />
+                        <?php submit_button(__('پاک کردن لیست خطاها', 'wc-price-scraper'), 'delete', 'wcps-clear-log', false); ?>
+                    </form>
+                <?php else : ?>
+                    <p><?php esc_html_e('هیچ خطایی در اسکرپ محصولات ثبت نشده است. همه چیز به درستی کار می‌کند.', 'wc-price-scraper'); ?></p>
+                <?php endif; ?>
             </div>
         </div>
         
