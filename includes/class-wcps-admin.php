@@ -164,7 +164,7 @@ class WCPS_Admin {
         ]);
 
         woocommerce_wp_text_input([
-            'id'          => '_product_price_adjustment',
+            'id'          => '_price_adjustment_percent',
             'label'       => __('تنظیم قیمت (درصد)', 'wc-price-scraper'),
             'type'        => 'number',
             'desc_tip'    => true,
@@ -196,8 +196,8 @@ class WCPS_Admin {
         if (isset($_POST['_source_url'])) {
             update_post_meta($post_id, '_source_url', esc_url_raw($_POST['_source_url']));
         }
-        if (isset($_POST['_product_price_adjustment'])) {
-            update_post_meta($post_id, '_product_price_adjustment', sanitize_text_field($_POST['_product_price_adjustment']));
+        if (isset($_POST['_price_adjustment_percent'])) {
+            update_post_meta($post_id, '_price_adjustment_percent', sanitize_text_field($_POST['_price_adjustment_percent']));
         }
         update_post_meta($post_id, '_auto_sync_variations', isset($_POST['_auto_sync_variations']) ? 'yes' : 'no');
     }
