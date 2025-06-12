@@ -169,7 +169,22 @@ class WCPS_Core {
             $variation->set_attributes($attr_data);
             
             if (isset($item['price']) && is_numeric(preg_replace('/[^0-9.]/', '', $item['price']))) {
-                $price = preg_replace('/[^0-9.]/', '', $item['price']);
+                // 1. دریافت قیمت خام و پاکسازی آن
+                $price = (float) preg_replace('/[^0-9.]/', '', $item['price']);
+
+                // 2. خواندن درصد تنظیم قیمت از محصول والد
+                $adjustment_percent = get_post_meta($pid, '_price_adjustment_percent', true);
+
+                // 3. اگر درصد تنظیم یک عدد معتبر بود، آن را اعمال کن
+                if (is_numeric($adjustment_percent) && $adjustment_percent != 0) {
+                    $adjustment_value = (float) $adjustment_percent;
+                    // محاسبه قیمت جدید
+                    $price = $price * (1 + ($adjustment_value / 100));
+                    // گرد کردن به دو رقم اعشار برای واحد پولی
+                    $price = round($price, 2);
+                }
+                
+                // 4. تنظیم قیمت نهایی (اصلی یا محاسبه‌شده) روی متغیر
                 $variation->set_price($price);
                 $variation->set_regular_price($price);
             }
