@@ -1,6 +1,9 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+// Load the options for the rounding feature
+$options = get_option('wcps_options', []); 
+
 // Add this PHP block at the top of the file to handle the form submission for clearing the log
 if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log') {
     if (isset($_POST['_wpnonce']) && wp_verify_nonce($_POST['_wpnonce'], 'wcps_clear_failed_log_nonce')) {

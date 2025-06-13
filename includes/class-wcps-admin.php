@@ -63,6 +63,9 @@ if (!class_exists('WCPS_Admin')) {
             register_setting($option_group, 'wc_price_scraper_n8n_webhook_url', ['type' => 'string', 'sanitize_callback' => 'esc_url_raw', 'default' => '']);
             register_setting($option_group, 'wc_price_scraper_n8n_model_slug', ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field', 'default' => '']);
             register_setting($option_group, 'wc_price_scraper_n8n_purchase_link_text', ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field', 'default' => 'Buy Now']);
+
+            // ++ ADD THIS LINE HERE ++
+            register_setting($option_group, 'wcps_options');
         }
 
         /**
