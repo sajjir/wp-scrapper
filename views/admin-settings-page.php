@@ -104,6 +104,38 @@ if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log'
                             <span id="reschedule_status" class="wcps-status-text"></span>
                         </td>
                     </tr>
+                    <tr valign="top" id="rounding-options-wrapper">
+                        <th scope="row">
+                            <label for="wcps_enable_rounding"><?php esc_html_e('رند کردن قیمت نهایی', 'wc-price-scraper'); ?></label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="wcps_enable_rounding" name="wcps_enable_rounding" value="yes" <?php checked(get_option('wcps_enable_rounding', 'no'), 'yes'); ?>>
+                                <?php esc_html_e('فعال‌سازی', 'wc-price-scraper'); ?>
+                            </label>
+
+                            <div id="rounding-details" style="margin-top: 10px; <?php if (get_option('wcps_enable_rounding', 'no') !== 'yes') echo 'display:none;'; ?>">
+                                <select name="wcps_rounding_direction" style="vertical-align: middle;">
+                                    <option value="up" <?php selected(get_option('wcps_rounding_direction'), 'up'); ?>>
+                                        <?php esc_html_e('رند کردن به بالا', 'wc-price-scraper'); ?>
+                                    </option>
+                                    <option value="down" <?php selected(get_option('wcps_rounding_direction'), 'down'); ?>>
+                                        <?php esc_html_e('رند کردن به پایین', 'wc-price-scraper'); ?>
+                                    </option>
+                                </select>
+                                <input type="number" name="wcps_rounding_multiple" value="<?php echo esc_attr(get_option('wcps_rounding_multiple', 1000)); ?>" class="small-text" min="1" step="1" style="vertical-align: middle;">
+                                <p class="description"><?php esc_html_e('قیمت به نزدیک‌ترین مضرب این عدد رند می‌شود.', 'wc-price-scraper'); ?></p>
+                            </div>
+
+                            <script>
+                            jQuery(document).ready(function($) {
+                                $('#wcps_enable_rounding').on('change', function() {
+                                    $('#rounding-details').slideToggle($(this).is(':checked'));
+                                });
+                            });
+                            </script>
+                        </td>
+                    </tr>
                 </table>
             </div>
         </div>
@@ -182,23 +214,6 @@ if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log'
             <h2 class="hndle"><span><?php esc_html_e('عملیات اضطراری', 'wc-price-scraper'); ?></span></h2>
             <div class="inside">
                 <table class="form-table">
-                    <tr valign="top" id="rounding-options-wrapper">
-                        <th scope="row">رند کردن قیمت نهایی</th>
-                        <td>
-                            <label for="wcps_enable_rounding">
-                                <input type="checkbox" id="wcps_enable_rounding" name="wcps_options[enable_rounding]" <?php checked(isset($options['enable_rounding'])); ?>>
-                                فعال‌سازی
-                            </label>
-                            <div id="rounding-details" style="<?php echo isset($options['enable_rounding']) ? '' : 'display: none;'; ?> margin-top: 10px;">
-                                <select name="wcps_options[rounding_direction]">
-                                    <option value="up" <?php selected(isset($options['rounding_direction']) && $options['rounding_direction'], 'up'); ?>>رند کردن به بالا (مثال: ۴۲۷۴)</option>
-                                    <option value="down" <?php selected(isset($options['rounding_direction']) && $options['rounding_direction'], 'down'); ?>>رند کردن به پایین (مثال: ۴۲۷۳)</option>
-                                </select>
-                                <input type="number" name="wcps_options[rounding_multiple]" value="<?php echo esc_attr($options['rounding_multiple'] ?? '1000'); ?>" placeholder="مثلا ۱۰۰۰">
-                                <p class="description">قیمت به نزدیک‌ترین مضرب این عدد رند می‌شود.</p>
-                            </div>
-                        </td>
-                    </tr>
                     <tr valign="top">
                         <th scope="row"><?php esc_html_e('توقف کامل', 'wc-price-scraper'); ?></th>
                         <td>
