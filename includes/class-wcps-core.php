@@ -185,6 +185,22 @@ if (!class_exists('WCPS_Core')) {
                         $price = round($price, 2);
                     }
                     
+                    // --- ROUNDING LOGIC START ---
+                    $options = get_option('wcps_options', []);
+                    $rounding_enabled = isset($options['enable_rounding']) && $options['enable_rounding'] === 'on';
+                    if ($rounding_enabled && isset($price)) {
+                        $direction = !empty($options['rounding_direction']) ? $options['rounding_direction'] : 'up';
+                        $multiple = !empty($options['rounding_multiple']) ? (int)$options['rounding_multiple'] : 0;
+                        if ($multiple > 0) {
+                            if ($direction === 'up') {
+                                $price = ceil($price / $multiple) * $multiple;
+                            } elseif ($direction === 'down') {
+                                $price = floor($price / $multiple) * $multiple;
+                            }
+                        }
+                    }
+                    // --- ROUNDING LOGIC END ---
+                    
                     // 4. تنظیم قیمت نهایی (اصلی یا محاسبه‌شده) روی متغیر
                     $variation->set_price($price);
                     $variation->set_regular_price($price);

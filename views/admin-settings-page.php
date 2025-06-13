@@ -182,6 +182,23 @@ if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log'
             <h2 class="hndle"><span><?php esc_html_e('عملیات اضطراری', 'wc-price-scraper'); ?></span></h2>
             <div class="inside">
                 <table class="form-table">
+                    <tr valign="top" id="rounding-options-wrapper">
+                        <th scope="row">رند کردن قیمت نهایی</th>
+                        <td>
+                            <label for="wcps_enable_rounding">
+                                <input type="checkbox" id="wcps_enable_rounding" name="wcps_options[enable_rounding]" <?php checked(isset($options['enable_rounding'])); ?>>
+                                فعال‌سازی
+                            </label>
+                            <div id="rounding-details" style="<?php echo isset($options['enable_rounding']) ? '' : 'display: none;'; ?> margin-top: 10px;">
+                                <select name="wcps_options[rounding_direction]">
+                                    <option value="up" <?php selected(isset($options['rounding_direction']) && $options['rounding_direction'], 'up'); ?>>رند کردن به بالا (مثال: ۴۲۷۴)</option>
+                                    <option value="down" <?php selected(isset($options['rounding_direction']) && $options['rounding_direction'], 'down'); ?>>رند کردن به پایین (مثال: ۴۲۷۳)</option>
+                                </select>
+                                <input type="number" name="wcps_options[rounding_multiple]" value="<?php echo esc_attr($options['rounding_multiple'] ?? '1000'); ?>" placeholder="مثلا ۱۰۰۰">
+                                <p class="description">قیمت به نزدیک‌ترین مضرب این عدد رند می‌شود.</p>
+                            </div>
+                        </td>
+                    </tr>
                     <tr valign="top">
                         <th scope="row"><?php esc_html_e('توقف کامل', 'wc-price-scraper'); ?></th>
                         <td>
@@ -263,3 +280,12 @@ if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log'
     </form>
     <p class="wcps-footer"><b>پلاگین توسعه داده شده توسط <a href="https://sajj.ir/" target="_blank">sajj.ir</a></b></p>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var checkbox = document.getElementById('wcps_enable_rounding');
+    var details = document.getElementById('rounding-details');
+    checkbox.addEventListener('change', function() {
+        details.style.display = checkbox.checked ? 'block' : 'none';
+    });
+});
+</script>
