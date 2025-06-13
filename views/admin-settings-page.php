@@ -1,12 +1,10 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-// Add this PHP block at the top of the file to handle the form submission for clearing the log
-if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log') {
-    if (isset($_POST['_wpnonce']) && wp_verify_nonce($_POST['_wpnonce'], 'wcps_clear_failed_log_nonce')) {
-        delete_option('wcps_failed_scrapes');
-        echo '<div class="updated"><p>' . esc_html__('لیست خطاهای اسکرپ با موفقیت پاک شد.', 'wc-price-scraper') . '</p></div>';
-    }
+// Handle the form submission for clearing the log
+if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log' && isset($_POST['_wpnonce']) && wp_verify_nonce($_POST['_wpnonce'], 'wcps_clear_failed_log_nonce')) {
+    delete_option('wcps_failed_scrapes');
+    echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('لیست خطاهای اسکرپ با موفقیت پاک شد.', 'wc-price-scraper') . '</p></div>';
 }
 ?>
 <div class="wrap wcps-settings-wrap">
@@ -17,9 +15,7 @@ if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log'
         <div class="postbox">
             <h2 class="hndle"><span><?php esc_html_e('بخش ۱: پنهان‌سازی و ادغام ویژگی‌ها', 'wc-price-scraper'); ?></span></h2>
             <div class="inside">
-                <p class="description">
-                    <?php esc_html_e('ویژگی‌هایی که در اینجا وارد می‌کنید (مثل گارانتی، کد داخلی و...) همیشه از دید کاربر پنهان شده و در فرآیند ادغام متغیرهای مشابه استفاده می‌شوند.', 'wc-price-scraper'); ?>
-                </p>
+                <p class="description"><?php esc_html_e('ویژگی‌هایی که در اینجا وارد می‌کنید (مثل گارانتی) همیشه از دید کاربر پنهان شده و در فرآیند ادغام متغیرهای مشابه استفاده می‌شوند.', 'wc-price-scraper'); ?></p>
                 <table class="form-table">
                     <tr valign="top">
                         <th scope="row"><label for="wcps_always_hide_keys"><?php esc_html_e('کلید ویژگی‌ها برای پنهان‌سازی', 'wc-price-scraper'); ?></label></th>
@@ -34,25 +30,21 @@ if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log'
         <div class="postbox">
             <h2 class="hndle"><span><?php esc_html_e('بخش ۲: قوانین حذف شرطی متغیرها', 'wc-price-scraper'); ?></span></h2>
             <div class="inside">
-                <p class="description">
-                    <?php esc_html_e('قوانینی برای حذف متغیرها بر اساس مقدار یک ویژگی خاص تعریف کنید.', 'wc-price-scraper'); ?><br>
-                    <strong><?php esc_html_e('نکته مهم:', 'wc-price-scraper'); ?></strong> <?php esc_html_e('اگر قانونی باعث شود هیچ متغیری باقی نماند، اجرا نشده و صرفاً ویژگی مربوطه از صفحه محصول پنهان خواهد شد.', 'wc-price-scraper'); ?>
-                </p>
+                <p class="description"><?php esc_html_e('قوانینی برای حذف متغیرها بر اساس مقدار یک ویژگی خاص تعریف کنید. اگر قانونی باعث شود هیچ متغیری باقی نماند، اجرا نخواهد شد.', 'wc-price-scraper'); ?></p>
                 <table class="form-table wcps-repeater-table" id="wcps-conditional-rules-table">
                     <tbody id="wcps-rules-container">
                         <?php
-                        $conditional_rules = get_option('wcps_conditional_rules', []);
-                        if (empty($conditional_rules)) { $conditional_rules[] = ['key' => '', 'value' => '']; }
+                        $conditional_rules = get_option('wcps_conditional_rules', [['key' => '', 'value' => '']]);
                         foreach ($conditional_rules as $i => $rule) :
                         ?>
                         <tr valign="top" class="wcps-rule-row">
                             <td>
                                 <label><?php esc_html_e('اگر ویژگی', 'wc-price-scraper'); ?></label>
-                                <input type="text" name="wcps_conditional_rules[<?php echo $i; ?>][key]" value="<?php echo esc_attr($rule['key']); ?>" placeholder="مثال: pa_location-inventory" class="regular-text" />
+                                <input type="text" name="wcps_conditional_rules[<?php echo $i; ?>][key]" value="<?php echo esc_attr($rule['key']); ?>" placeholder="مثال: pa_location" class="regular-text" />
                             </td>
                             <td>
                                 <label><?php esc_html_e('برابر بود با', 'wc-price-scraper'); ?></label>
-                                <input type="text" name="wcps_conditional_rules[<?php echo $i; ?>][value]" value="<?php echo esc_attr($rule['value']); ?>" placeholder="مثال: فروشگاه مشهد" class="regular-text" />
+                                <input type="text" name="wcps_conditional_rules[<?php echo $i; ?>][value]" value="<?php echo esc_attr($rule['value']); ?>" placeholder="مثال: فروشگاه تهران" class="regular-text" />
                             </td>
                             <td class="wcps-repeater-action">
                                 <button type="button" class="button button-link-delete wcps-remove-rule" title="<?php esc_attr_e('حذف این قانون', 'wc-price-scraper'); ?>"><span class="dashicons dashicons-trash"></span></button>
@@ -61,246 +53,76 @@ if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log'
                         <?php endforeach; ?>
                     </tbody>
                     <tfoot>
-                        <tr>
-                            <td colspan="3">
-                                <button type="button" class="button" id="wcps-add-rule"><span class="dashicons dashicons-plus-alt2"></span> <?php esc_html_e('افزودن قانون جدید', 'wc-price-scraper'); ?></button>
-                            </td>
-                        </tr>
+                        <tr><td colspan="3"><button type="button" class="button" id="wcps-add-rule"><span class="dashicons dashicons-plus-alt2"></span> <?php esc_html_e('افزودن قانون جدید', 'wc-price-scraper'); ?></button></td></tr>
                     </tfoot>
                 </table>
             </div>
         </div>
 
         <div class="postbox">
-            <h2 class="hndle"><span><?php esc_html_e('تنظیمات عمومی و کرون‌جاب', 'wc-price-scraper'); ?></span></h2>
+            <h2 class="hndle"><span><?php esc_html_e('تنظیمات قیمت‌گذاری', 'wc-price-scraper'); ?></span></h2>
             <div class="inside">
                 <table class="form-table">
                     <tr valign="top">
-                        <th scope="row"><label for="wc_price_scraper_cron_interval"><?php esc_html_e('فاصله به‌روزرسانی (ساعت)', 'wc-price-scraper'); ?></label></th>
+                        <th scope="row"><label for="wcps_enable_rounding"><?php esc_html_e('رند کردن قیمت نهایی', 'wc-price-scraper'); ?></label></th>
                         <td>
-                            <input type="number" id="wc_price_scraper_cron_interval" name="wc_price_scraper_cron_interval" value="<?php echo esc_attr(get_option('wc_price_scraper_cron_interval', 12)); ?>" min="1" class="small-text">
-                            <p class="description"><?php esc_html_e('هر چند ساعت یکبار قیمت تمام محصولات به صورت خودکار به‌روز شود.', 'wc-price-scraper'); ?></p>
-                        </td>
-                    </tr>
-                    <tr valign="top">
-                        <th scope="row"><?php esc_html_e('وضعیت کرون جاب', 'wc-price-scraper'); ?></th>
-                        <td>
-                            <?php
-                            $next_cron = wp_next_scheduled('wc_price_scraper_cron_event');
-                            $now = current_time('timestamp');
-                            $default_interval = intval(get_option('wc_price_scraper_cron_interval', 12)) * 3600;
-                            $diff = $next_cron ? max(0, $next_cron - $now) : $default_interval;
-                            ?>
-                            <div class="wcps-cron-status">
-                                <div>
-                                    <span class="wcps-cron-label"><?php esc_html_e('زمان اجرای بعدی:', 'wc-price-scraper'); ?></span>
-                                    <span id="cron_countdown" data-seconds-left="<?php echo esc_attr($diff); ?>">--:--</span>
+                            <fieldset>
+                                <label>
+                                    <input type="checkbox" id="wcps_enable_rounding" name="wcps_enable_rounding" value="yes" <?php checked(get_option('wcps_enable_rounding', 'no'), 'yes'); ?>>
+                                    <?php esc_html_e('فعال‌سازی', 'wc-price-scraper'); ?>
+                                </label>
+                                <div id="rounding-details" style="margin-top: 10px; <?php if (get_option('wcps_enable_rounding', 'no') !== 'yes') echo 'display:none;'; ?>">
+                                    <select name="wcps_rounding_direction" style="vertical-align: middle;">
+                                        <option value="up" <?php selected(get_option('wcps_rounding_direction', 'up'), 'up'); ?>><?php esc_html_e('رند کردن به بالا', 'wc-price-scraper'); ?></option>
+                                        <option value="down" <?php selected(get_option('wcps_rounding_direction', 'up'), 'down'); ?>><?php esc_html_e('رند کردن به پایین', 'wc-price-scraper'); ?></option>
+                                    </select>
+                                    <input type="number" name="wcps_rounding_multiple" value="<?php echo esc_attr(get_option('wcps_rounding_multiple', 1000)); ?>" class="small-text" min="1" step="1" style="vertical-align: middle;">
+                                    <p class="description"><?php esc_html_e('قیمت به نزدیک‌ترین مضرب این عدد رند می‌شود (مثال: ۱۰۰۰).', 'wc-price-scraper'); ?></p>
                                 </div>
-                                <button type="button" class="button button-primary" id="force_reschedule_button">
-                                    <span class="dashicons dashicons-controls-play"></span> <?php esc_html_e('شروع فوری کران جاب', 'wc-price-scraper'); ?>
-                                </button>
-                                <span class="spinner"></span>
-                            </div>
-                            <span id="reschedule_status" class="wcps-status-text"></span>
-                        </td>
-                    </tr>
-                    <tr valign="top" id="rounding-options-wrapper">
-                        <th scope="row">
-                            <label for="wcps_enable_rounding"><?php esc_html_e('رند کردن قیمت نهایی', 'wc-price-scraper'); ?></label>
-                        </th>
-                        <td>
-                            <label>
-                                <input type="checkbox" id="wcps_enable_rounding" name="wcps_enable_rounding" value="yes" <?php checked(get_option('wcps_enable_rounding', 'no'), 'yes'); ?>>
-                                <?php esc_html_e('فعال‌سازی', 'wc-price-scraper'); ?>
-                            </label>
-
-                            <div id="rounding-details" style="margin-top: 10px; <?php if (get_option('wcps_enable_rounding', 'no') !== 'yes') echo 'display:none;'; ?>">
-                                <select name="wcps_rounding_direction" style="vertical-align: middle;">
-                                    <option value="up" <?php selected(get_option('wcps_rounding_direction'), 'up'); ?>>
-                                        <?php esc_html_e('رند کردن به بالا', 'wc-price-scraper'); ?>
-                                    </option>
-                                    <option value="down" <?php selected(get_option('wcps_rounding_direction'), 'down'); ?>>
-                                        <?php esc_html_e('رند کردن به پایین', 'wc-price-scraper'); ?>
-                                    </option>
-                                </select>
-                                <input type="number" name="wcps_rounding_multiple" value="<?php echo esc_attr(get_option('wcps_rounding_multiple', 1000)); ?>" class="small-text" min="1" step="1" style="vertical-align: middle;">
-                                <p class="description"><?php esc_html_e('قیمت به نزدیک‌ترین مضرب این عدد رند می‌شود.', 'wc-price-scraper'); ?></p>
-                            </div>
-
-                            <script>
-                            jQuery(document).ready(function($) {
-                                $('#wcps_enable_rounding').on('change', function() {
-                                    $('#rounding-details').slideToggle($(this).is(':checked'));
-                                });
-                            });
-                            </script>
+                            </fieldset>
                         </td>
                     </tr>
                 </table>
-            </div>
-        </div>
-
-        <div class="postbox">
-            <h2 class="hndle"><span><?php esc_html_e('به‌روزرسانی با فرکانس بالا (برای محصولات خاص)', 'wc-price-scraper'); ?></span></h2>
-            <div class="inside">
-                 <p class="description">
-                    <?php esc_html_e('شناسه محصولاتی که نیاز به به‌روزرسانی سریع‌تر دارند را در کادر زیر وارد کنید (هر شناسه در یک خط). سپس فاصله زمانی دلخواه خود را بر حسب دقیقه تنظیم کنید.', 'wc-price-scraper'); ?>
-                </p>
-                <table class="form-table">
-                    <tr valign="top">
-                        <th scope="row"><label for="wcps_high_frequency_pids"><?php esc_html_e('شناسه محصولات', 'wc-price-scraper'); ?></label></th>
-                        <td>
-                            <textarea id="wcps_high_frequency_pids" name="wcps_high_frequency_pids" rows="8" class="large-text" placeholder="<?php esc_attr_e("مثال:\n123\n456\n789", 'wc-price-scraper'); ?>"><?php echo esc_textarea(get_option('wcps_high_frequency_pids', '')); ?></textarea>
-                        </td>
-                    </tr>
-                    <tr valign="top">
-                        <th scope="row"><label for="wcps_high_frequency_interval"><?php esc_html_e('فاصله به‌روزرسانی (دقیقه)', 'wc-price-scraper'); ?></label></th>
-                        <td>
-                            <input type="number" id="wcps_high_frequency_interval" name="wcps_high_frequency_interval" value="<?php echo esc_attr(get_option('wcps_high_frequency_interval', 30)); ?>" min="1" class="small-text">
-                             <p class="description"><?php esc_html_e('این کران‌جاب به صورت مستقل از کران‌جاب عمومی اجرا خواهد شد.', 'wc-price-scraper'); ?></p>
-                        </td>
-                    </tr>
-                     <tr valign="top">
-                        <th scope="row"><?php esc_html_e('عملیات فوری', 'wc-price-scraper'); ?></th>
-                        <td>
-                            <button type="button" class="button button-secondary" id="force_scrape_high_frequency">
-                                <span class="dashicons dashicons-controls-play"></span> <?php esc_html_e('اسکرپ فوری این محصولات', 'wc-price-scraper'); ?>
-                            </button>
-                            <span class="spinner" id="hf_spinner"></span>
-                            <span id="hf_status" class="wcps-status-text"></span>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-
-        <div class="postbox">
-            <h2 class="hndle"><span><?php esc_html_e('تنظیمات یکپارچه‌سازی با N8N', 'wc-price-scraper'); ?></span></h2>
-            <div class="inside">
-                <table class="form-table">
-                    <tr valign="top">
-                        <th scope="row"><?php esc_html_e('فعال‌سازی N8N', 'wc-price-scraper'); ?></th>
-                        <td>
-                            <label for="wc_price_scraper_n8n_enable">
-                                <input name="wc_price_scraper_n8n_enable" type="checkbox" id="wc_price_scraper_n8n_enable" value="yes" <?php checked('yes', get_option('wc_price_scraper_n8n_enable', 'no')); ?> />
-                                <?php esc_html_e('ارسال داده به N8N پس از همگام‌سازی موفق.', 'wc-price-scraper'); ?>
-                            </label>
-                        </td>
-                    </tr>
-                    <tr valign="top">
-                        <th scope="row"><label for="wc_price_scraper_n8n_webhook_url"><?php esc_html_e('URL وب‌هوک N8N', 'wc-price-scraper'); ?></label></th>
-                        <td>
-                            <input type="url" id="wc_price_scraper_n8n_webhook_url" name="wc_price_scraper_n8n_webhook_url" value="<?php echo esc_attr(get_option('wc_price_scraper_n8n_webhook_url', '')); ?>" class="large-text" placeholder="https://n8n.example.com/webhook/your-hook-id" />
-                        </td>
-                    </tr>
-                    <tr valign="top">
-                        <th scope="row"><label for="wc_price_scraper_n8n_model_slug"><?php esc_html_e('نامک ویژگی برای "مدل"', 'wc-price-scraper'); ?></label></th>
-                        <td>
-                            <input type="text" id="wc_price_scraper_n8n_model_slug" name="wc_price_scraper_n8n_model_slug" value="<?php echo esc_attr(get_option('wc_price_scraper_n8n_model_slug', '')); ?>" class="regular-text" placeholder="<?php esc_attr_e('مثال: model یا size', 'wc-price-scraper'); ?>" />
-                            <p class="description"><?php esc_html_e('نامک (slug) ویژگی که می‌خواهید به عنوان "مدل" در داده‌های ارسالی به N8N استفاده شود (بدون پیشوند pa_).', 'wc-price-scraper'); ?></p>
-                        </td>
-                    </tr>
-                    <tr valign="top">
-                        <th scope="row"><label for="wc_price_scraper_n8n_purchase_link_text"><?php esc_html_e('متن لینک خرید برای شیت', 'wc-price-scraper'); ?></label></th>
-                        <td>
-                            <input type="text" id="wc_price_scraper_n8n_purchase_link_text" name="wc_price_scraper_n8n_purchase_link_text" value="<?php echo esc_attr(get_option('wc_price_scraper_n8n_purchase_link_text', 'Buy Now')); ?>" class="regular-text" />
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-
-        <div class="postbox">
-            <h2 class="hndle"><span><?php esc_html_e('عملیات اضطراری', 'wc-price-scraper'); ?></span></h2>
-            <div class="inside">
-                <table class="form-table">
-                    <tr valign="top">
-                        <th scope="row"><?php esc_html_e('توقف کامل', 'wc-price-scraper'); ?></th>
-                        <td>
-                            <button type="button" class="button button-danger" id="force_stop_button">توقف تمام عملیات و پاک‌سازی کامل صف</button>
-                            <p class="description"><?php esc_html_e('اگر احساس می‌کنید فرآیندی گیر کرده و متوقف نمی‌شود، از این دکمه استفاده کنید. این دکمه تمام کران‌جاب‌های این پلاگین (چه در حال اجرا و چه زمان‌بندی شده) را فوراً حذف می‌کند.', 'wc-price-scraper'); ?></p>
-                            <span id="stop_status" style="margin-left: 10px; font-weight: bold;"></span>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-        
-        <div class="postbox">
-            <h2 class="hndle"><span><?php esc_html_e('گزارش آخرین فعالیت‌ها (۶۳ خط آخر)', 'wc-price-scraper'); ?></span></h2>
-            <div class="inside">
-                <div id="wcps-log-viewer">
-                    <pre><?php
-                        // We need an instance of the admin class to call the method.
-                        // This is a simplified way for a view file.
-                        $admin_class_instance = WC_Price_Scraper::instance()->admin;
-                        $log_lines = $admin_class_instance->get_log_lines(63);
-                        foreach (array_reverse($log_lines) as $line) {
-                            echo esc_html($line) . "\n";
-                        }
-                    ?></pre>
-                </div>
-                <style>
-                    #wcps-log-viewer pre {
-                        background-color: #f7f7f7;
-                        border: 1px solid #ccc;
-                        padding: 15px;
-                        max-height: 400px;
-                        overflow-y: scroll;
-                        white-space: pre-wrap;
-                        word-wrap: break-word;
-                        direction: ltr;
-                        text-align: left;
-                    }
-                </style>
-            </div>
-        </div>
-        
-        <div class="postbox">
-            <h2 class="hndle"><span><?php esc_html_e('گزارش محصولات ناموفق در اسکرپ', 'wc-price-scraper'); ?></span></h2>
-            <div class="inside">
-                <p class="description">
-                    <?php esc_html_e('در این بخش، محصولاتی که در آخرین تلاش‌ها برای اسکرپ با خطا مواجه شده‌اند لیست می‌شوند. با کلیک روی هر مورد می‌توانید به صفحه ویرایش آن محصول بروید و مشکل را بررسی کنید (مثلاً اصلاح URL منبع).', 'wc-price-scraper'); ?>
-                </p>
-                
-                <?php
-                $failed_scrapes = get_option('wcps_failed_scrapes', []);
-                if (!empty($failed_scrapes)) :
-                ?>
-                    <ul class="ul-disc" style="margin-right: 20px;">
-                        <?php foreach (array_reverse($failed_scrapes, true) as $product_id => $data) : ?>
-                            <li>
-                                <strong><a href="<?php echo esc_url(get_edit_post_link($product_id)); ?>" target="_blank"><?php echo esc_html($data['product_title'] ?? "محصول با شناسه {$product_id}"); ?></a></strong>
-                                <p style="margin-top: 0; margin-bottom: 10px;">
-                                    <small>
-                                        <?php echo esc_html(date_i18n('Y/m/d H:i:s', $data['timestamp'])); ?> - 
-                                        <em><?php esc_html_e('خطا:', 'wc-price-scraper'); ?> <?php echo esc_html($data['error_message']); ?></em>
-                                    </small>
-                                </p>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                    <form method="post" action="">
-                        <?php wp_nonce_field('wcps_clear_failed_log_nonce'); ?>
-                        <input type="hidden" name="wcps_action" value="clear_failed_log" />
-                        <?php submit_button(__('پاک کردن لیست خطاها', 'wc-price-scraper'), 'delete', 'wcps-clear-log', false); ?>
-                    </form>
-                <?php else : ?>
-                    <p><?php esc_html_e('هیچ خطایی در اسکرپ محصولات ثبت نشده است. همه چیز به درستی کار می‌کند.', 'wc-price-scraper'); ?></p>
-                <?php endif; ?>
             </div>
         </div>
         
         <?php submit_button(); ?>
     </form>
-    <p class="wcps-footer"><b>پلاگین توسعه داده شده توسط <a href="https://sajj.ir/" target="_blank">sajj.ir</a></b></p>
-</div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var checkbox = document.getElementById('wcps_enable_rounding');
-    var details = document.getElementById('rounding-details');
-    checkbox.addEventListener('change', function() {
-        details.style.display = checkbox.checked ? 'block' : 'none';
+    
+    <script>
+    jQuery(document).ready(function($) {
+        // Toggle for rounding options
+        $('#wcps_enable_rounding').on('change', function() {
+            $('#rounding-details').slideToggle($(this).is(':checked'));
+        });
+
+        // Repeater field logic for conditional rules
+        function wcps_reindex_rules() {
+            $('#wcps-rules-container .wcps-rule-row').each(function(index) {
+                $(this).find('input').each(function() {
+                    if (this.name) {
+                        this.name = this.name.replace(/\[\d+\]/, '[' + index + ']');
+                    }
+                });
+            });
+        }
+
+        $('#wcps-add-rule').on('click', function() {
+            var newRow = $('#wcps-rules-container .wcps-rule-row:first').clone();
+            newRow.find('input').val('');
+            $('#wcps-rules-container').append(newRow);
+            wcps_reindex_rules();
+        });
+
+        $('#wcps-rules-container').on('click', '.wcps-remove-rule', function(e) {
+            e.preventDefault();
+            if ($('#wcps-rules-container .wcps-rule-row').length > 1) {
+                $(this).closest('.wcps-rule-row').remove();
+            } else {
+                $(this).closest('.wcps-rule-row').find('input').val('');
+            }
+            wcps_reindex_rules();
+        });
     });
-});
-</script>
+    </script>
+</div>
