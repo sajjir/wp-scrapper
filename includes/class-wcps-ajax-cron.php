@@ -355,5 +355,17 @@ if (!class_exists('WCPS_Ajax_Cron')) {
             // End the process
             wp_die('Scrape task finished.');
         }
+
+        /**
+         * AJAX: Clear failed log callback
+         */
+        public function ajax_clear_failed_log_callback() {
+            if (!current_user_can('manage_options') || !check_ajax_referer('wcps_clear_failed_log_nonce', 'security')) {
+                wp_send_json_error(['message' => 'درخواست نامعتبر است.']);
+            }
+
+            delete_option('wcps_failed_scrapes');
+            wp_send_json_success();
+        }
     }
 }

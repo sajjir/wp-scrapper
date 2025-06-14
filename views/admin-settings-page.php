@@ -248,11 +248,11 @@ if (isset($_POST['wcps_action']) && $_POST['wcps_action'] === 'clear_failed_log'
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                    <form method="post" action="">
-                        <?php wp_nonce_field('wcps_clear_failed_log_nonce'); ?>
-                        <input type="hidden" name="wcps_action" value="clear_failed_log" />
-                        <?php submit_button(__('پاک کردن لیست خطاها', 'wc-price-scraper'), 'delete', 'wcps-clear-log', false); ?>
-                    </form>
+                    <button type="button" id="wcps-clear-log-button" class="button button-delete">
+                        <?php esc_html_e('پاک کردن لیست خطاها', 'wc-price-scraper'); ?>
+                    </button>
+                    <span class="spinner" id="wcps-clear-log-spinner"></span>
+                    <span id="wcps-clear-log-status" style="margin-right: 10px; font-weight: bold;"></span>
                 <?php else : ?>
                     <p><?php esc_html_e('هیچ خطایی در اسکرپ محصولات ثبت نشده است. همه چیز به درستی کار می‌کند.', 'wc-price-scraper'); ?></p>
                 <?php endif; ?>

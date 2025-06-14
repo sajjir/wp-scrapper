@@ -98,6 +98,10 @@ if (!class_exists('WC_Price_Scraper')) {
             add_action('wp_ajax_wcps_force_hf_scrape', [$this->ajax_cron, 'ajax_force_high_frequency_scrape']);
 
             add_action('wcps_scrape_single_product_task', [$this->ajax_cron, 'scrape_single_product_handler'], 10, 1);
+
+            add_action('wp_ajax_wcps_clear_failed_log', [
+                $this->ajax_cron, 'ajax_clear_failed_log_callback'
+            ]);
         }
 
         // --- Utility Functions ---

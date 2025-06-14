@@ -139,7 +139,8 @@ if (!class_exists('WCPS_Admin')) {
                 'ajax_url'         => admin_url('admin-ajax.php'),
                 'next_cron_action' => 'wc_price_scraper_next_cron',
                 'reschedule_nonce' => wp_create_nonce('wcps_reschedule_nonce'),
-                'stop_nonce'       => wp_create_nonce('wcps_stop_nonce')
+                'stop_nonce'       => wp_create_nonce('wcps_stop_nonce'),
+                'clear_log_nonce'  => wp_create_nonce('wcps_clear_failed_log_nonce')
             ]);
             }
         }

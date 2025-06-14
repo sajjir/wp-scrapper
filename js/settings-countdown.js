@@ -183,3 +183,48 @@ jQuery(document).ready(function($) {
         });
     });
 });
+
+// --- Clear Failed Log Button ---
+jQuery(document).ready(function($) {
+    $('#wcps-clear-log-button').on('click', function(e) {
+        e.preventDefault();
+        if (!confirm('آیا از پاک کردن تمام گزارش‌های خطا مطمئن هستید؟')) {
+            return;
+        }
+
+        var button = $(this);
+        var spinner = $('#wcps-clear-log-spinner');
+        var statusSpan = $('#wcps-clear-log-status');
+
+        button.prop('disabled', true);
+        spinner.addClass('is-active').css('display', 'inline-block');
+        statusSpan.text('');
+
+        $.ajax({
+            url: wc_scraper_settings_vars.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'wcps_clear_failed_log',
+                security: wc_scraper_settings_vars.clear_log_nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    statusSpan.text('لیست با موفقیت پاک شد.').css('color', 'green');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    statusSpan.text('خطا: ' + response.data.message).css('color', 'red');
+                    button.prop('disabled', false);
+                }
+            },
+            error: function() {
+                statusSpan.text('خطای ایجکس.').css('color', 'red');
+                button.prop('disabled', false);
+            },
+            complete: function() {
+                spinner.removeClass('is-active').hide();
+            }
+        });
+    });
+});
